@@ -825,10 +825,15 @@ window.RIPPLE_CFG = {"mode": "page", "lines": ["const answer = await model.run(p
    so it can be installed as its own app on Android. On first open it asks the old address
    for what it had saved in this browser (access key, settings, offline data) and copies it
    across, without overwriting anything already here. The old address answers only this
-   exact address. Added by publish-apps.py; not in the source page. */
+   exact address. Added by publish-apps.py; not in the source page.
+   After the first run it runs again whenever the Open Brain access key is missing here
+   (a first run that found nothing, or a key cleared later), so the app never stays locked
+   while the catalog has the key. 'ob.keyStop' (set by the app's Lock button) stops that. */
 (function () {
-  var FLAG = 'ob.handover.v1', FROM = 'https://openbrain.thewishingstream.com';
-  try { if (localStorage.getItem(FLAG)) return; } catch (e) { return; }
+  var FLAG = 'ob.handover.v1', FROM = 'https://openbrain.thewishingstream.com', KEY = "openbrain.accessKey";
+  try {
+    if (localStorage.getItem(FLAG) && !(KEY && !localStorage.getItem(KEY) && !localStorage.getItem('ob.keyStop'))) return;
+  } catch (e) { return; }
   function start() {
     var f = document.createElement('iframe'), done = false;
     f.hidden = true; f.tabIndex = -1; f.setAttribute('aria-hidden', 'true'); f.title = 'Handover';
@@ -1501,12 +1506,12 @@ function render() {
 
 // <owner>
 function showUnlock(msg) {
-  $('#app').innerHTML = '<div class="unlock"><h1>AI Desk</h1><p>Enter your Open Brain access key. It’s kept in this browser only, shared with the catalog on this site.</p>' +
+  $('#app').innerHTML = '<div class="unlock"><h1>AI Desk</h1><p>Enter your Open Brain access key. It’s kept in this browser only. If the catalog in this browser has it, AI Desk picks it up from there by itself.</p>' +
     '<input id="key" type="password" autocomplete="off" placeholder="Access key"><div class="err">' + esc(msg || '') + '</div><button id="go">Unlock</button></div>';
   const go = async () => {
     accessKey = $('#key').value.trim();
     if (!accessKey) return;
-    try { localStorage.setItem(KEY_STORAGE, accessKey); } catch (_) {}
+    try { localStorage.setItem(KEY_STORAGE, accessKey); localStorage.removeItem('ob.keyStop'); } catch (_) {}
     start();
   };
   $('#go').onclick = go;
@@ -1577,7 +1582,7 @@ document.addEventListener('click', async (e) => {
   if (t.dataset.jump) { const el = document.getElementById(t.dataset.jump); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   if (t.hasAttribute('data-back')) { state.reading = false; render(); return; }
   if (t.hasAttribute('data-refresh')) { t.textContent = 'Loading…'; try { await load(); } catch (_) {} render(); return; } // owner
-  if (t.hasAttribute('data-lock')) { if (confirm('Remove the access key from this browser? The catalog on this site will lock too.')) { try { localStorage.removeItem(KEY_STORAGE); } catch (_) {} accessKey = ''; notes = []; showUnlock(); } } // owner
+  if (t.hasAttribute('data-lock')) { if (confirm('Remove the access key from AI Desk in this browser? The catalog keeps its own copy.')) { try { localStorage.removeItem(KEY_STORAGE); localStorage.setItem('ob.keyStop', '1'); } catch (_) {} accessKey = ''; notes = []; showUnlock(); } } // owner
 });
 // <owner>
 document.addEventListener('submit', async (e) => {
